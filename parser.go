@@ -77,6 +77,4 @@ func (p *Parser) Parse() (jobs []Job, err error) {
 
 		jobs = append(jobs, job)
 	}
-
-	return jobs, nil
 }

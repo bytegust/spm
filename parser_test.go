@@ -9,7 +9,7 @@ var procfile = `a: ENV1=value1 program1 arg1 && program2
 b: program3 arg3 arg4
 `
 
-func TestA(t *testing.T) {
+func TestParser(t *testing.T) {
 	p := NewParser(strings.NewReader(procfile))
 	jobs, err := p.Parse()
 	if err != nil {
