@@ -19,6 +19,15 @@ func NewParser(r io.Reader) *Parser {
 type Job struct {
 	Name     string
 	Commands []Command
+
+	// WaitSockets holds socket information to wait their network availability
+	// before running this job.
+	WaitSockets []WaitSocket
+}
+
+type WaitSocket struct {
+	Type string // tcp or udp
+	Addr string // ip:port
 }
 
 type Command struct {

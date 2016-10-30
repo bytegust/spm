@@ -3,10 +3,12 @@ package spm
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type Manager struct {
@@ -61,6 +63,14 @@ func (m *Manager) start(job Job) {
 		log.Println(fmt.Sprintf("wont start job '%s' because already running", job.Name))
 		return
 	}
+
+	for _, sock := range job.WaitSockets {
+		if err := AwaitReachable(sock.Type, sock.Addr, time.Minute); err != nil {
+			log.Println(fmt.Sprintf("cannot start job '%s' because dependency timeout", job.Name))
+			return
+		}
+	}
+
 	for _, cmd := range job.Commands {
 		c := exec.Command(cmd.Cmd[0], cmd.Cmd[1:]...)
 		c.Stdout = os.Stdout
@@ -98,4 +108,17 @@ func (m *Manager) List() (jobs []string) {
 		jobs = append(jobs, job)
 	}
 	return jobs
+}
+
+func AwaitReachable(typ, addr string, maxWait time.Duration) error {
+	done := time.Now().Add(maxWait)
+	for time.Now().Before(done) {
+		c, err := net.Dial(typ, addr)
+		if err == nil {
+			c.Close()
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return fmt.Errorf("%v unreachable for %v", typ, addr, maxWait)
 }
