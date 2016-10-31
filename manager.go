@@ -72,7 +72,7 @@ func (m *Manager) start(job Job) {
 	}
 
 	for _, cmd := range job.Commands {
-		c := exec.Command(cmd.Cmd[0], cmd.Cmd[1:]...)
+		c := exec.Command("sh", "-c", cmd.Cmd[0])
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
 		c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

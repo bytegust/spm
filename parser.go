@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"strings"
 	"regexp"
+	"strings"
 )
 
 type Parser struct {
@@ -98,29 +98,8 @@ PARSE:
 				return jobs, errors.New("spm: invalid name")
 			}
 
-			commandsSlice := strings.Split(commandsStr, " && ")
-			for _, c := range commandsSlice {
-				cmd := Command{Env: make(map[string]string)}
-				exprs := strings.Split(c, " ")
-
-				for _, expr := range exprs {
-					expr = strings.Trim(expr, " ")
-					if expr == "" {
-						continue
-					}
-
-					// if it's an env var
-					sl := strings.Split(expr, "=")
-					if len(sl) == 2 {
-						cmd.Env[sl[0]] = sl[1]
-						continue
-					}
-
-					cmd.Cmd = append(cmd.Cmd, expr)
-				}
-
-				job.Commands = append(job.Commands, cmd)
-			}
+			cmd := Command{Cmd: []string{strings.Trim(commandsStr, " ")}}
+			job.Commands = append(job.Commands, cmd)
 
 			jobs = append(jobs, job)
 			break
