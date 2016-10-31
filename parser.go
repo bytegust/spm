@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"regexp"
 )
 
 type Parser struct {
@@ -64,7 +65,28 @@ PARSE:
 				lines = append(lines, line...)
 			}
 
-			sp := strings.SplitN(string(lines), ":", 2)
+			// convert bytes to string
+			slines := string(lines)
+
+			// find string that matches regexp
+			re := regexp.MustCompile("wait for(.*)?[0-9]+(?:\\.[0-9]+){3}(:[0-9]+)(.*)?:")
+			matched := re.FindString(slines)
+			if matched != "" {
+				wait := strings.TrimPrefix(strings.TrimSuffix(matched, ":"), "wait for")
+				ports := strings.Split(wait, ",")
+
+				for _, port := range ports {
+					p := strings.Split(strings.TrimSpace(port), " ")
+					job.WaitSockets = append(job.WaitSockets, WaitSocket{
+						Type: strings.TrimSpace(p[0]),
+						Addr: strings.TrimSpace(p[1]),
+					})
+				}
+
+				slines = strings.Join(re.Split(slines, -1), "")
+			}
+
+			sp := strings.SplitN(slines, ":", 2)
 			if len(sp) < 2 {
 				return jobs, errors.New("spm: missing command")
 			}

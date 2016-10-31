@@ -5,11 +5,10 @@ import (
 	"testing"
 )
 
-var procfile = `a: ENV1=value1 \ 
-program1 arg1 && \
-program2
-        
-
+var procfile = `a: \
+wait for tcp 127.0.0.1:6379, udp 127.0.0.1:7867 : \
+ENV1=value1 \
+program1 arg1 && program2
 b: program3 arg3 arg4
 `
 
@@ -38,6 +37,12 @@ func TestParser(t *testing.T) {
 	if job.Commands[1].Cmd[0] != "program2" {
 		t.Error("wrong cmd")
 	}
+	if job.WaitSockets[0].Type != "tcp" {
+		t.Error("wrong protocol")
+	}
+	if job.WaitSockets[0].Addr != "127.0.0.1:6379" {
+		t.Error("wrong address")
+	}
 
 	if job1.Name != "b" {
 		t.Error("wrong job name")
@@ -50,5 +55,11 @@ func TestParser(t *testing.T) {
 	}
 	if job1.Commands[0].Cmd[2] != "arg4" {
 		t.Error("wrong cmd")
+	}
+	if job.WaitSockets[1].Type != "udp" {
+		t.Error("wrong protocol")
+	}
+	if job.WaitSockets[1].Addr != "127.0.0.1:7867" {
+		t.Error("wrong port")
 	}
 }

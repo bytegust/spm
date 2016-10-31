@@ -26,7 +26,7 @@ func main() {
 		sock := spm.NewSocket()
 
 		switch c.Args().First() {
-		// start deamon
+		// start daemon
 		case "":
 			go func() {
 				ch := make(chan os.Signal)
