@@ -1,0 +1,15 @@
+{
+	"ImportPath": "github.com/bytegust/spm",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v74",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/urfave/cli",
+			"Comment": "v1.18.0-84-g3eb41f1",
+			"Rev": "3eb41f1bb122ac7535cc7b32db6b78b541879726"
+		}
+	]
+}
