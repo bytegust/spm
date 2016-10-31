@@ -24,7 +24,7 @@ func NewManager() *Manager {
 
 func (m *Manager) StartAll(jobs []Job) {
 	for _, job := range jobs {
-		go m.start(job)
+		m.start(job)
 	}
 }
 
@@ -54,44 +54,47 @@ func (m *Manager) start(job Job) {
 	m.Jobs[job.Name] = job
 	m.mu.Unlock()
 
-	if err := c.Run(); err != nil {
+	if err := c.Start(); err != nil {
 		log.Println(err)
+
+		m.mu.Lock()
+		delete(m.Jobs, job.Name)
+		m.mu.Unlock()
+
+		go func() { job.NotifyEnd <- true }()
 	}
-	job.NotifyEnd <- true
+
+	go func() {
+		if err := c.Wait(); err != nil {
+			log.Println(err)
+		}
+
+		m.mu.Lock()
+		delete(m.Jobs, job.Name)
+		m.mu.Unlock()
+
+		job.NotifyEnd <- true
+	}()
 }
 
 func (m *Manager) Stop(job string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.destroy(job)
+	j := m.Jobs[job]
+	pid, _ := syscall.Getpgid(j.Cmd.Process.Pid)
+	syscall.Kill(-pid, syscall.SIGTERM)
+	<-j.NotifyEnd
 }
 
 func (m *Manager) StopAll() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	var wg sync.WaitGroup
 	for job, _ := range m.Jobs {
 		wg.Add(1)
 		go func(job string) {
-			m.destroy(job)
+			m.Stop(job)
 			wg.Done()
 		}(job)
 	}
 
 	wg.Wait()
-}
-
-func (m *Manager) destroy(job string) {
-	j := m.Jobs[job]
-	m.endProcess(j, syscall.SIGTERM)
-	delete(m.Jobs, job)
-	<-j.NotifyEnd
-}
-
-func (m *Manager) endProcess(job Job, signal syscall.Signal) {
-	pid, _ := syscall.Getpgid(job.Cmd.Process.Pid)
-	syscall.Kill(-pid, signal)
 }
 
 func (m *Manager) List() (jobs []string) {
