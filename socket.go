@@ -8,7 +8,7 @@ import (
 
 // unix socket for communicating between cli apps and running deamon.
 
-var sockName = "/tmp/spm.sock"
+var sockName = "/tmp/s4s4pm.sock"
 
 type Socket struct {
 	// Message emits imcoming messages from dialer or listener.
@@ -49,36 +49,46 @@ func NewSocket() *Socket {
 }
 
 func (s *Socket) Close() error {
-	s.mu.Lock()
-	for _, sock := range s.Connections {
-		sock.Close()
-	}
-	s.mu.Unlock()
 	if s.conn != nil {
 		return s.conn.Close()
 	}
+
 	if s.ln != nil {
-		return s.ln.Close()
+		if err := s.ln.Close(); err != nil {
+			return err
+		}
+		s.mu.Lock()
+		for _, sock := range s.Connections {
+			sock.Close()
+		}
+		s.mu.Unlock()
 	}
+
 	return nil
 }
 
-func (s *Socket) readLoop() {
+func (s *Socket) readLoop(parent *Socket) {
+	if parent != nil {
+		parent.mu.Lock()
+		parent.Connections = append(parent.Connections, s)
+		parent.mu.Unlock()
+	}
+
 	dec := json.NewDecoder(s.conn)
 	for {
 		var mes Message
-		err := dec.Decode(&mes)
-		if err != nil {
-			s.mu.Lock()
-			for i, conn := range s.Connections {
-				if conn == s {
-					close(conn.Message)
-					s.Connections = append(s.Connections[:i], s.Connections[i+1:]...)
-					break
+		if err := dec.Decode(&mes); err != nil {
+			if parent != nil {
+				parent.mu.Lock()
+				for i, conn := range parent.Connections {
+					if conn == s {
+						close(conn.Message)
+						parent.Connections = append(parent.Connections[:i], parent.Connections[i+1:]...)
+						break
+					}
 				}
-			}
-			s.mu.Unlock()
-			if s.conn != nil {
+				parent.mu.Unlock()
+			} else {
 				close(s.Message)
 				close(s.Connection)
 			}
@@ -94,18 +104,18 @@ func (s *Socket) Listen() error {
 		return err
 	}
 	s.ln = ln
+
 	for {
 		c, err := ln.Accept()
 		if err != nil {
 			return nil
 		}
+
 		sock := NewSocket()
 		sock.conn = c
-		go sock.readLoop()
+		go sock.readLoop(s)
+
 		s.Connection <- sock
-		s.mu.Lock()
-		s.Connections = append(s.Connections, sock)
-		s.mu.Unlock()
 	}
 }
 
@@ -115,6 +125,6 @@ func (s *Socket) Dial() error {
 		return err
 	}
 	s.conn = conn
-	go s.readLoop()
+	go s.readLoop(nil)
 	return nil
 }

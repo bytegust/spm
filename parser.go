@@ -17,25 +17,6 @@ func NewParser(r io.Reader) *Parser {
 	return &Parser{r: r}
 }
 
-type Job struct {
-	Name     string
-	Commands []Command
-
-	// WaitSockets holds socket information to wait their network availability
-	// before running this job.
-	WaitSockets []WaitSocket
-}
-
-type WaitSocket struct {
-	Type string // tcp or udp
-	Addr string // ip:port
-}
-
-type Command struct {
-	Env map[string]string
-	Cmd []string
-}
-
 func (p *Parser) Parse() (jobs []Job, err error) {
 	reader := bufio.NewReader(p.r)
 
@@ -98,8 +79,7 @@ PARSE:
 				return jobs, errors.New("spm: invalid name")
 			}
 
-			cmd := Command{Cmd: []string{strings.Trim(commandsStr, " ")}}
-			job.Commands = append(job.Commands, cmd)
+			job.Command = strings.Trim(commandsStr, " ")
 
 			jobs = append(jobs, job)
 			break
