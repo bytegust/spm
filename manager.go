@@ -14,15 +14,11 @@ import (
 type Manager struct {
 	mu       sync.Mutex
 	Commands map[string]*exec.Cmd
-
-	NotifyEnd chan bool
-	wg        sync.WaitGroup
 }
 
 func NewManager() *Manager {
 	return &Manager{
-		Commands:  make(map[string]*exec.Cmd),
-		NotifyEnd: make(chan bool),
+		Commands: make(map[string]*exec.Cmd),
 	}
 }
 
@@ -47,13 +43,7 @@ func (m *Manager) StopAll() {
 
 func (m *Manager) StartAll(jobs []Job) {
 	for _, job := range jobs {
-		m.wg.Add(1)
 		go m.start(job)
-	}
-
-	m.wg.Wait()
-	if len(m.Commands) == 0 {
-		m.NotifyEnd <- true
 	}
 }
 
@@ -91,7 +81,6 @@ func (m *Manager) start(job Job) {
 			m.mu.Lock()
 			delete(m.Commands, job.Name)
 			m.mu.Unlock()
-			m.wg.Done()
 		}
 	}
 }

@@ -97,7 +97,7 @@ func (s *Socket) Listen() error {
 	for {
 		c, err := ln.Accept()
 		if err != nil {
-			return err
+			return nil
 		}
 		sock := NewSocket()
 		sock.conn = c
