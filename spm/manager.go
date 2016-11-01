@@ -39,13 +39,6 @@ func (m *Manager) start(job Job) {
 		return
 	}
 
-	for _, sock := range job.WaitSockets {
-		if err := AwaitReachable(sock.Type, sock.Addr, time.Minute); err != nil {
-			log.Println(fmt.Sprintf("cannot start job '%s' because dependency timeout", job.Name))
-			return
-		}
-	}
-
 	// create logs file and assign to Job.LogFile
 	logFile, err := os.Create(fmt.Sprintf("/tmp/spm_%s.log", job.Name))
 	if err != nil {
@@ -67,7 +60,6 @@ func (m *Manager) start(job Job) {
 	}
 
 	c := exec.Command("sh", "-c", job.Command)
-	//c.Stdin = strings.NewReader("some input")
 	c.Stderr = logStreamerErr
 	c.Stdout = logStreamerOut
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -137,19 +129,6 @@ func (m *Manager) List() (jobs []string) {
 		jobs = append(jobs, job)
 	}
 	return jobs
-}
-
-func AwaitReachable(typ, addr string, maxWait time.Duration) error {
-	done := time.Now().Add(maxWait)
-	for time.Now().Before(done) {
-		c, err := net.Dial(typ, addr)
-		if err == nil {
-			c.Close()
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return fmt.Errorf("%v unreachable for %v", typ, addr, maxWait)
 }
 
 // ReadLog reads last n lines of the file that corresponds to job.

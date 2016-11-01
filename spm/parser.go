@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"regexp"
 	"strings"
 )
 
@@ -48,25 +47,6 @@ PARSE:
 
 			// convert bytes to string
 			slines := string(lines)
-
-			// find string that matches regexp
-			re := regexp.MustCompile("wait\\s+for\\s+([a-z]+)\\s([a-z-0-9.]+):([0-9]+)(.*)?:")
-
-			matched := re.FindString(slines)
-			if matched != "" {
-				wait := strings.TrimPrefix(strings.TrimSuffix(matched, ":"), "wait for")
-				ports := strings.Split(wait, ",")
-
-				for _, port := range ports {
-					p := strings.Split(strings.TrimSpace(port), " ")
-					job.WaitSockets = append(job.WaitSockets, WaitSocket{
-						Type: strings.TrimSpace(p[0]),
-						Addr: strings.TrimSpace(p[1]),
-					})
-				}
-
-				slines = strings.Join(re.Split(slines, -1), "")
-			}
 
 			sp := strings.SplitN(slines, ":", 2)
 			if len(sp) < 2 {

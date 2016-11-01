@@ -6,12 +6,12 @@ import (
 	"sync"
 )
 
-// unix socket for communicating between cli apps and running deamon.
+// unix socket for communicating between cli apps and running daemon.
 
 var sockName = "/tmp/s4s975243gpm.sock"
 
 type Socket struct {
-	// Message emits imcoming messages from dialer or listener.
+	// Message emits incoming messages from dialer or listener.
 	Message chan Message
 
 	// conn is a dialer when Socket is a dialer

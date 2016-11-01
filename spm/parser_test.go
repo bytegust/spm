@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var procfile = `chord: wait for tcp 127.0.0.1:6379: \
+var procfile = `chord: wait for tcp localhost:6379: \
 cd $GOPATH/src/github.com/bytegust/chord && make dev
 `
 
@@ -21,7 +21,7 @@ func TestParser(t *testing.T) {
 	if job.Name != "a" {
 		t.Error("wrong job name")
 	}
-	if job.Command != "ENV1=value1 program1 arg1 && program2" {
+	if job.Command != "cd $GOPATH/src/github.com/bytegust/chord && make dev" {
 		t.Error("wrong command")
 	}
 	if job.WaitSockets[0].Type != "tcp" {
@@ -31,10 +31,10 @@ func TestParser(t *testing.T) {
 		t.Error("wrong address")
 	}
 
-	if job1.Name != "b" {
+	if job1.Name != "redis" {
 		t.Error("wrong job name")
 	}
-	if job1.Command != "program3 arg3 arg4" {
+	if job1.Command != "redis-server" {
 		t.Error("wrong command")
 	}
 	if job1.WaitSockets != nil {
