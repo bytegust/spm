@@ -5,8 +5,11 @@ import (
 	"testing"
 )
 
-var procfile = `chord: wait for tcp localhost:6379: \
-cd $GOPATH/src/github.com/bytegust/chord && make dev
+var procfile = `
+# task: echo "comment line"
+chord: make dev
+# start redis
+redis: redis-server
 `
 
 func TestParser(t *testing.T) {
@@ -18,17 +21,12 @@ func TestParser(t *testing.T) {
 
 	job, job1 := jobs[0], jobs[1]
 
-	if job.Name != "a" {
+	if job.Name != "chord" {
 		t.Error("wrong job name")
 	}
-	if job.Command != "cd $GOPATH/src/github.com/bytegust/chord && make dev" {
+
+	if job.Command != "make dev" {
 		t.Error("wrong command")
-	}
-	if job.WaitSockets[0].Type != "tcp" {
-		t.Error("wrong protocol")
-	}
-	if job.WaitSockets[0].Addr != "localhost:6379" {
-		t.Error("wrong address")
 	}
 
 	if job1.Name != "redis" {
@@ -36,8 +34,5 @@ func TestParser(t *testing.T) {
 	}
 	if job1.Command != "redis-server" {
 		t.Error("wrong command")
-	}
-	if job1.WaitSockets != nil {
-		t.Error("wrong socket info")
 	}
 }

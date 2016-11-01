@@ -38,6 +38,8 @@ PARSE:
 
 			if len(line) == 0 {
 				continue PARSE
+			} else if line[0] == '#' {
+				continue PARSE
 			} else if len(line) > 0 && line[len(line)-1] == '\\' {
 				lines = append(lines, line[:len(line)-1]...)
 				continue
