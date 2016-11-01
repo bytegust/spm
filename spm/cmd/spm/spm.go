@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/bytegust/spm"
+	"github.com/bytegust/tools/spm"
 	"github.com/urfave/cli"
 )
 

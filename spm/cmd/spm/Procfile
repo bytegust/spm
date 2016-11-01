@@ -1,0 +1,2 @@
+etcd: cd $GOPATH/src/github.com/bytegust/containers/etcd && docker-compose up
+stats.service: cd $GOPATH/src/github.com/bytegust/stats.service/cmd/stats && godep go run main.go
