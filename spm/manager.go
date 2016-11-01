@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/kvz/logstreamer"
 	"github.com/rogpeppe/rog-go/reverse"
