@@ -30,7 +30,7 @@ func handleCliCommand(c *cli.Context, command string) {
 	switch command {
 	// start daemon
 	case "":
-		startDeamon(c)
+		startDaemon(c)
 	case "start":
 		file, err := os.Open("Procfile")
 		if err != nil {
@@ -89,10 +89,27 @@ func handleCliCommand(c *cli.Context, command string) {
 		for _, job := range m.JobList {
 			log.Println(job)
 		}
+	case "logs":
+		sock := spm.NewSocket()
+		if err := sock.Dial(); err != nil {
+			log.Fatal(err)
+		}
+
+		if err := sock.Send(spm.Message{
+			Command:   "logs",
+			Arguments: []string{c.Args().Get(1)},
+		}); err != nil {
+			log.Fatal(err)
+		}
+
+		m := <-sock.Message
+		for i := len(m.JobLogs) - 1; i >= 0; i-- {
+			log.Println(m.JobLogs[i])
+		}
 	}
 }
 
-func startDeamon(c *cli.Context) {
+func startDaemon(c *cli.Context) {
 	quit := make(chan bool)
 	manager := spm.NewManager()
 	sock := spm.NewSocket()
@@ -143,6 +160,18 @@ func handleMessage(mes spm.Message, conn *spm.Socket, manager *spm.Manager, quit
 			manager.StopAll()
 		} else {
 			manager.Stop(job)
+		}
+		conn.Close()
+	case "logs":
+		job := mes.Arguments[0]
+		if job == "" {
+			// @Todo suggest help command after #4
+			return
+		}
+		if err := conn.Send(spm.Message{
+			JobLogs: manager.ReadLog(job, 200),
+		}); err != nil {
+			log.Println(err)
 		}
 		conn.Close()
 	}

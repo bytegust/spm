@@ -8,7 +8,7 @@ import (
 
 // unix socket for communicating between cli apps and running deamon.
 
-var sockName = "/tmp/s4s4pm.sock"
+var sockName = "/tmp/s4s975243gpm.sock"
 
 type Socket struct {
 	// Message emits imcoming messages from dialer or listener.
@@ -34,6 +34,7 @@ type Message struct {
 	Arguments []string
 	Jobs      []Job
 	JobList   []string
+	JobLogs   []string
 }
 
 func (s *Socket) Send(m Message) error {

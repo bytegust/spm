@@ -2,6 +2,7 @@ package spm
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -9,6 +10,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/kvz/logstreamer"
+	"github.com/rogpeppe/rog-go/reverse"
 )
 
 type Manager struct {
@@ -42,10 +46,33 @@ func (m *Manager) start(job Job) {
 		}
 	}
 
+	// create logs file and assign to Job.LogFile
+	logFile, err := os.Create(fmt.Sprintf("/tmp/spm_%s.log", job.Name))
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		job.LogFile = logFile
+	}
+
+	// TODO(u) time color
+
+	// create logger to prefix stream
+	logger := log.New(io.MultiWriter(os.Stdout, logFile), "", log.Ltime)
+	logStreamerOut := logstreamer.NewLogstreamer(logger, "| ", false)
+	logStreamerErr := logstreamer.NewLogstreamer(logger, "| ", true)
+
+	job.Logger = Logger{
+		Out: logStreamerOut,
+		Err: logStreamerErr,
+	}
+
 	c := exec.Command("sh", "-c", job.Command)
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
+	//c.Stdin = strings.NewReader("some input")
+	c.Stderr = logStreamerErr
+	c.Stdout = logStreamerOut
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	job.Logger.Err.FlushRecord()
 
 	job.NotifyEnd = make(chan bool)
 	job.Cmd = c
@@ -58,6 +85,9 @@ func (m *Manager) start(job Job) {
 		log.Println(err)
 
 		m.mu.Lock()
+		job.LogFile.Close()
+		defer job.Logger.Out.Close()
+		defer job.Logger.Err.Close()
 		delete(m.Jobs, job.Name)
 		m.mu.Unlock()
 
@@ -79,6 +109,9 @@ func (m *Manager) start(job Job) {
 
 func (m *Manager) Stop(job string) {
 	j := m.Jobs[job]
+	defer j.LogFile.Close()
+	defer j.Logger.Out.Close()
+	defer j.Logger.Err.Close()
 	pid, _ := syscall.Getpgid(j.Cmd.Process.Pid)
 	syscall.Kill(-pid, syscall.SIGTERM)
 	<-j.NotifyEnd
@@ -117,4 +150,14 @@ func AwaitReachable(typ, addr string, maxWait time.Duration) error {
 		time.Sleep(100 * time.Millisecond)
 	}
 	return fmt.Errorf("%v unreachable for %v", typ, addr, maxWait)
+}
+
+// ReadLog reads last n lines of the file that corresponds to job.
+func (m *Manager) ReadLog(job string, n int) (lines []string) {
+	file := m.Jobs[job].LogFile
+	scanner := reverse.NewScanner(file)
+	for i := 0; i < n && scanner.Scan(); i++ {
+		lines = append(lines, scanner.Text())
+	}
+	return lines
 }

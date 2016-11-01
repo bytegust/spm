@@ -50,7 +50,8 @@ PARSE:
 			slines := string(lines)
 
 			// find string that matches regexp
-			re := regexp.MustCompile("wait for( *)(?:( *)(tcp | udp | unix).+( *))+((?:(\\.)?([0-9]?)+){3}|(^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\\.[a-zA-Z]{2,}$)?(:[0-9]+)(.*))?:")
+			re := regexp.MustCompile("wait\\s+for\\s+([a-z]+)\\s([a-z-0-9.]+):([0-9]+)(.*)?:")
+
 			matched := re.FindString(slines)
 			if matched != "" {
 				wait := strings.TrimPrefix(strings.TrimSuffix(matched, ":"), "wait for")
