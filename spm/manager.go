@@ -3,6 +3,7 @@ package spm
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"os"
@@ -56,6 +57,11 @@ func (m *Manager) start(job Job) {
 		log.Fatal(err)
 	}
 
+	stderr, err := c.StderrPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	job.NotifyEnd = make(chan bool)
 	job.Cmd = c
 
@@ -79,7 +85,7 @@ func (m *Manager) start(job Job) {
 	job.LogColor = rand.Intn(250) + 1
 
 	// read command's stdout line by line
-	in := bufio.NewScanner(stdout)
+	in := bufio.NewScanner(io.MultiReader(stdout, stderr))
 	for in.Scan() {
 		l := m.LoggerPrefix(job) + in.Text()
 		// write to stdout (console)
