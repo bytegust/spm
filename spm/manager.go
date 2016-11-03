@@ -40,8 +40,7 @@ func (m *Manager) start(job Job) {
 
 	// create logs file and assign to Job.LogFile
 	fileName := fmt.Sprintf("/tmp/spm_%s.log", job.Name)
-	logfile, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-
+	logfile, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE|os.O_TRUNC, 700)
 	if err != nil {
 		log.Fatal(err)
 	} else {
@@ -69,24 +68,21 @@ func (m *Manager) start(job Job) {
 	log.Println(fmt.Sprintf("job `%s` has been started", job.Name))
 	if err := c.Start(); err != nil {
 		log.Println(err)
-
-		job.Logfile.Close()
-		go func() { m.jobEnded(job) }()
+		go m.jobEnded(job)
+		return
 	}
 
 	// generate random logging color
-	rand.Seed(int64(time.Now().Nanosecond()))
-	job.LogColor = rand.Intn(250) + 1
+	job.LogColor = getColor()
 
 	// read command's stdout line by line
-
 	in := bufio.NewScanner(pr)
 	go func() {
 		for in.Scan() {
 			l := m.LoggerPrefix(job) + in.Text()
 			// write to stdout (console)
 			fmt.Fprintln(os.Stdout, l)
-			// write to job specific logfile
+			//write to job specific logfile
 			if _, err = logfile.WriteString(l + "\n"); err != nil {
 				log.Fatal(err)
 			}
@@ -104,17 +100,22 @@ func (m *Manager) start(job Job) {
 	}()
 }
 
+func getColor() int {
+	rand.Seed(int64(time.Now().Nanosecond()))
+	return rand.Intn(250) + 1
+}
+
 func (m *Manager) jobEnded(job Job) {
 	m.mu.Lock()
 	delete(m.Jobs, job.Name)
 	m.mu.Unlock()
+	job.Logfile.Close()
 	log.Println(fmt.Sprintf("job `%s` ended", job.Name))
 	job.NotifyEnd <- true
 }
 
 func (m *Manager) Stop(job string) {
 	j := m.Jobs[job]
-	defer j.Logfile.Close()
 	pid, _ := syscall.Getpgid(j.Cmd.Process.Pid)
 	syscall.Kill(-pid, syscall.SIGTERM)
 	<-j.NotifyEnd
