@@ -4,18 +4,30 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"syscall"
 
 	"github.com/bytegust/tools/spm"
 	"github.com/urfave/cli"
 )
 
+var procfile string
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	app := cli.NewApp()
 	app.Name = "spm - Simple Process Manager"
-	app.Usage = "spm [command] [argument]"
+	app.Usage = "spm [options] [command] [argument]"
+
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:        "file, f",
+			Value:       "./",
+			Usage:       "procfile location (e.g. ./spm/cmd/Procfile or ./spm/cmd/)",
+			Destination: &procfile,
+		},
+	}
 
 	app.Action = func(c *cli.Context) error {
 		command := c.Args().First()
@@ -32,7 +44,8 @@ func handleCliCommand(c *cli.Context, command string) {
 	case "":
 		startDaemon(c)
 	case "start":
-		file, err := os.Open("Procfile")
+		procfile := getProcfilePath(procfile)
+		file, err := os.Open(procfile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -175,4 +188,19 @@ func handleMessage(mes spm.Message, conn *spm.Socket, manager *spm.Manager, quit
 		}
 		conn.Close()
 	}
+}
+
+func getProcfilePath(input string) string {
+	re := regexp.MustCompile("(/)$|(/Procfile(\\s+?|$))")
+	match := re.FindStringSubmatch(input)
+
+	if len(match) > 0 {
+		if match[1] == "/" {
+			return input + "Procfile"
+		} else if match[2] == "/Procfile" {
+			return input
+		}
+	}
+
+	return input + "/Procfile"
 }

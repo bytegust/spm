@@ -47,10 +47,7 @@ PARSE:
 				lines = append(lines, line...)
 			}
 
-			// convert bytes to string
-			slines := string(lines)
-
-			sp := strings.SplitN(slines, ":", 2)
+			sp := strings.SplitN(string(lines), ":", 2)
 			if len(sp) < 2 {
 				return jobs, errors.New("spm: missing command")
 			}
