@@ -3,7 +3,6 @@ package spm
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 	"os"
@@ -52,15 +51,13 @@ func (m *Manager) start(job Job) {
 	c := exec.Command("sh", "-c", job.Command)
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	stdout, err := c.StdoutPipe()
+	pr, pw, err := os.Pipe()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	stderr, err := c.StderrPipe()
-	if err != nil {
-		log.Fatal(err)
-	}
+	c.Stderr = pw
+	c.Stdout = pw
 
 	job.NotifyEnd = make(chan bool)
 	job.Cmd = c
@@ -69,15 +66,12 @@ func (m *Manager) start(job Job) {
 	m.Jobs[job.Name] = job
 	m.mu.Unlock()
 
+	log.Println(fmt.Sprintf("job `%s` has been started", job.Name))
 	if err := c.Start(); err != nil {
 		log.Println(err)
 
-		m.mu.Lock()
 		job.Logfile.Close()
-		delete(m.Jobs, job.Name)
-		m.mu.Unlock()
-
-		go func() { job.NotifyEnd <- true }()
+		go func() { m.jobEnded(job) }()
 	}
 
 	// generate random logging color
@@ -85,31 +79,37 @@ func (m *Manager) start(job Job) {
 	job.LogColor = rand.Intn(250) + 1
 
 	// read command's stdout line by line
-	in := bufio.NewScanner(io.MultiReader(stdout, stderr))
-	for in.Scan() {
-		l := m.LoggerPrefix(job) + in.Text()
-		// write to stdout (console)
-		fmt.Fprintln(os.Stdout, l)
-		// write to job specific logfile
-		if _, err = logfile.WriteString(l + "\n"); err != nil {
+
+	in := bufio.NewScanner(pr)
+	go func() {
+		for in.Scan() {
+			l := m.LoggerPrefix(job) + in.Text()
+			// write to stdout (console)
+			fmt.Fprintln(os.Stdout, l)
+			// write to job specific logfile
+			if _, err = logfile.WriteString(l + "\n"); err != nil {
+				log.Fatal(err)
+			}
+		}
+		if err := in.Err(); err != nil {
 			log.Fatal(err)
 		}
-	}
-	if err := in.Err(); err != nil {
-		log.Fatal(err)
-	}
+	}()
 
 	go func() {
 		if err := c.Wait(); err != nil {
 			log.Println(err)
 		}
-
-		m.mu.Lock()
-		delete(m.Jobs, job.Name)
-		m.mu.Unlock()
-
-		job.NotifyEnd <- true
+		m.jobEnded(job)
 	}()
+}
+
+func (m *Manager) jobEnded(job Job) {
+	m.mu.Lock()
+	delete(m.Jobs, job.Name)
+	m.mu.Unlock()
+	log.Println(fmt.Sprintf("job `%s` ended", job.Name))
+	job.NotifyEnd <- true
 }
 
 func (m *Manager) Stop(job string) {

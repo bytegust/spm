@@ -151,10 +151,13 @@ func startDaemon(c *cli.Context) {
 		}
 	}()
 
-	<-quit
+	log.Println("deamon started")
 
+	<-quit
 	sock.Close()
 	manager.StopAll()
+
+	log.Println("deamon ended")
 }
 
 func handleMessage(mes spm.Message, conn *spm.Socket, manager *spm.Manager, quit chan bool) {
