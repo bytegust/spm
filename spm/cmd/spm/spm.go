@@ -103,6 +103,7 @@ func handleCliCommand(c *cli.Context, command string) {
 		for _, job := range m.JobList {
 			fmt.Printf("\t%s", job)
 		}
+		log.Println("") // line break
 	case "logs":
 		sock := spm.NewSocket()
 		if err := sock.Dial(); err != nil {
