@@ -40,7 +40,7 @@ func (m *Manager) start(job Job) {
 
 	// create logs file and assign to Job.LogFile
 	fileName := fmt.Sprintf("/tmp/spm_%s.log", job.Name)
-	logfile, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	logfile, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 
 	if err != nil {
 		log.Fatal(err)
