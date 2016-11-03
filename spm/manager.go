@@ -1,15 +1,16 @@
 package spm
 
 import (
+	"bufio"
 	"fmt"
-	"io"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"sync"
 	"syscall"
+	"time"
 
-	"github.com/kvz/logstreamer"
 	"github.com/rogpeppe/rog-go/reverse"
 )
 
@@ -38,31 +39,22 @@ func (m *Manager) start(job Job) {
 	}
 
 	// create logs file and assign to Job.LogFile
-	logFile, err := os.Create(fmt.Sprintf("/tmp/spm_%s.log", job.Name))
+	fileName := fmt.Sprintf("/tmp/spm_%s.log", job.Name)
+	logfile, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		job.LogFile = logFile
-	}
-
-	// TODO(u) time color
-
-	// create logger to prefix stream
-	logger := log.New(io.MultiWriter(os.Stdout, logFile), "", log.Ltime)
-	logStreamerOut := logstreamer.NewLogstreamer(logger, "| ", false)
-	logStreamerErr := logstreamer.NewLogstreamer(logger, "| ", true)
-
-	job.Logger = Logger{
-		Out: logStreamerOut,
-		Err: logStreamerErr,
+		job.Logfile = logfile
 	}
 
 	c := exec.Command("sh", "-c", job.Command)
-	c.Stderr = logStreamerErr
-	c.Stdout = logStreamerOut
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	job.Logger.Err.FlushRecord()
+	stdout, err := c.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	job.NotifyEnd = make(chan bool)
 	job.Cmd = c
@@ -75,13 +67,30 @@ func (m *Manager) start(job Job) {
 		log.Println(err)
 
 		m.mu.Lock()
-		job.LogFile.Close()
-		defer job.Logger.Out.Close()
-		defer job.Logger.Err.Close()
+		job.Logfile.Close()
 		delete(m.Jobs, job.Name)
 		m.mu.Unlock()
 
 		go func() { job.NotifyEnd <- true }()
+	}
+
+	// generate random logging color
+	rand.Seed(int64(time.Now().Nanosecond()))
+	job.LogColor = rand.Intn(250) + 1
+
+	// read command's stdout line by line
+	in := bufio.NewScanner(stdout)
+	for in.Scan() {
+		l := m.LoggerPrefix(job) + in.Text()
+		// write to stdout (console)
+		fmt.Fprintln(os.Stdout, l)
+		// write to job specific logfile
+		if _, err = logfile.WriteString(l + "\n"); err != nil {
+			log.Fatal(err)
+		}
+	}
+	if err := in.Err(); err != nil {
+		log.Fatal(err)
 	}
 
 	go func() {
@@ -99,9 +108,7 @@ func (m *Manager) start(job Job) {
 
 func (m *Manager) Stop(job string) {
 	j := m.Jobs[job]
-	defer j.LogFile.Close()
-	defer j.Logger.Out.Close()
-	defer j.Logger.Err.Close()
+	defer j.Logfile.Close()
 	pid, _ := syscall.Getpgid(j.Cmd.Process.Pid)
 	syscall.Kill(-pid, syscall.SIGTERM)
 	<-j.NotifyEnd
@@ -131,10 +138,16 @@ func (m *Manager) List() (jobs []string) {
 
 // ReadLog reads last n lines of the file that corresponds to job.
 func (m *Manager) ReadLog(job string, n int) (lines []string) {
-	file := m.Jobs[job].LogFile
+	file := m.Jobs[job].Logfile
 	scanner := reverse.NewScanner(file)
 	for i := 0; i < n && scanner.Scan(); i++ {
 		lines = append(lines, scanner.Text())
 	}
 	return lines
+}
+
+// LoggerPrefix returns given logger values with unix color code and time as prefix
+func (m *Manager) LoggerPrefix(job Job) string {
+	t := time.Now().Format("15:04:05 PM")
+	return fmt.Sprintf("\033[38;5;%dm%s %s | \033[0m", job.LogColor, t, job.Name)
 }

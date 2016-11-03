@@ -1,15 +1,11 @@
 {
-	"ImportPath": "github.com/bytegust/spm",
+	"ImportPath": "github.com/bytegust/tools/spm",
 	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "github.com/kvz/logstreamer",
-			"Rev": "a635b98146f0f465f3413a0b8ec481f3698d3fc2"
-		},
 		{
 			"ImportPath": "github.com/rogpeppe/rog-go/reverse",
 			"Rev": "f57ad5e24ab7813942c045f86eda1066eb969e98"

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -98,9 +99,9 @@ func handleCliCommand(c *cli.Context, command string) {
 		}
 
 		m := <-sock.Message
-		log.Println("running jobs:")
+		fmt.Println("Running jobs:")
 		for _, job := range m.JobList {
-			log.Println(job)
+			fmt.Printf("\t%s", job)
 		}
 	case "logs":
 		sock := spm.NewSocket()
@@ -117,7 +118,7 @@ func handleCliCommand(c *cli.Context, command string) {
 
 		m := <-sock.Message
 		for i := len(m.JobLogs) - 1; i >= 0; i-- {
-			log.Println(m.JobLogs[i])
+			fmt.Println(m.JobLogs[i])
 		}
 	}
 }
@@ -179,7 +180,7 @@ func handleMessage(mes spm.Message, conn *spm.Socket, manager *spm.Manager, quit
 		job := mes.Arguments[0]
 		if job == "" {
 			// @Todo suggest help command after #4
-			return
+			conn.Close()
 		}
 		if err := conn.Send(spm.Message{
 			JobLogs: manager.ReadLog(job, 200),

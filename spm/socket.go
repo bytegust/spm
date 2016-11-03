@@ -8,7 +8,7 @@ import (
 
 // unix socket for communicating between cli apps and running daemon.
 
-var sockName = "/tmp/spm9999.sock"
+var sockName = "/tmp/spm.sock"
 
 type Socket struct {
 	// Message emits incoming messages from dialer or listener.
