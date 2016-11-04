@@ -19,7 +19,6 @@ func NewParser(r io.Reader) *Parser {
 func (p *Parser) Parse() (jobs []Job, err error) {
 	reader := bufio.NewReader(p.r)
 
-PARSE:
 	for {
 		job := Job{}
 		var lines []byte
@@ -37,9 +36,9 @@ PARSE:
 			line = bytes.TrimSpace(line)
 
 			if len(line) == 0 {
-				continue PARSE
+				continue
 			} else if line[0] == '#' {
-				continue PARSE
+				continue
 			} else if len(line) > 0 && line[len(line)-1] == '\\' {
 				lines = append(lines, line[:len(line)-1]...)
 				continue
