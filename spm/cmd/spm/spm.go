@@ -12,14 +12,44 @@ import (
 	"github.com/urfave/cli"
 )
 
+var template = `Simple Process Manager.
+
+Usage: spm [OPTIONS] COMMAND [arg...]
+       spm [ --help ]
+
+Options:
+
+  -f, --file=~/.Procfile    Location of Procfile
+
+  -h, --help                Print usage
+
+Commands:
+
+    start           Start all jobs defined in Procfile
+
+    start <jobs>    Starts jobs if present in Procfile
+
+    stop            Stop all current jobs
+
+    stop <jobs>     Stop jobs if currently running
+
+    list            Lists all running jobs
+
+    logs <job>      Prints last 200 lines of job's logfile
+
+Documentation can be found at https://github.com/bytegust/tools
+`
+
 var procfile string
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	cli.AppHelpTemplate = template
+
 	app := cli.NewApp()
 	app.Name = "spm - Simple Process Manager"
-	app.Usage = "spm [options] [command] [argument]"
+	app.Usage = "spm [OPTIONS] COMMAND [args...]"
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -62,9 +92,28 @@ func handleCliCommand(c *cli.Context, command string) {
 			log.Fatal(err)
 		}
 
+		var j []spm.Job
+		if args := c.Args()[1:]; len(args) > 0 {
+			for _, arg := range args {
+				exist := false
+				for _, job := range jobs {
+					if job.Name == arg {
+						j = append(j, job)
+						exist = true
+						break
+					}
+				}
+				if !exist {
+					fmt.Printf("job %s is not exist in procfile\n", arg)
+				}
+			}
+		} else {
+			j = jobs
+		}
+
 		if err := sock.Send(spm.Message{
 			Command: "start",
-			Jobs:    jobs,
+			Jobs:    j,
 		}); err != nil {
 			log.Fatal(err)
 		}
@@ -79,7 +128,7 @@ func handleCliCommand(c *cli.Context, command string) {
 
 		if err := sock.Send(spm.Message{
 			Command:   "stop",
-			Arguments: []string{c.Args().Get(1)},
+			Arguments: c.Args()[1:],
 		}); err != nil {
 			log.Fatal(err)
 		}
@@ -101,13 +150,17 @@ func handleCliCommand(c *cli.Context, command string) {
 		m := <-sock.Message
 		fmt.Println("Running jobs:")
 		for _, job := range m.JobList {
-			fmt.Printf("\t%s", job)
+			fmt.Printf("\t%s\n", job)
 		}
 		fmt.Println("") // line break
 	case "logs":
 		sock := spm.NewSocket()
 		if err := sock.Dial(); err != nil {
 			log.Fatal(err)
+		}
+
+		if job := c.Args().Get(1); job == "" {
+			fmt.Println(template)
 		}
 
 		if err := sock.Send(spm.Message{
@@ -121,6 +174,8 @@ func handleCliCommand(c *cli.Context, command string) {
 		for i := len(m.JobLogs) - 1; i >= 0; i-- {
 			fmt.Println(m.JobLogs[i])
 		}
+	default:
+		fmt.Println(template)
 	}
 }
 
@@ -173,17 +228,17 @@ func handleMessage(mes spm.Message, conn *spm.Socket, manager *spm.Manager, quit
 		}
 		conn.Close()
 	case "stop":
-		job := mes.Arguments[0]
-		if job == "" {
-			manager.StopAll()
+		if args := mes.Arguments; len(args) > 0 {
+			for _, arg := range args {
+				go manager.Stop(arg)
+			}
 		} else {
-			manager.Stop(job)
+			manager.StopAll()
 		}
 		conn.Close()
 	case "logs":
 		job := mes.Arguments[0]
 		if job == "" {
-			// @Todo suggest help command after #4
 			conn.Close()
 		}
 		if err := conn.Send(spm.Message{

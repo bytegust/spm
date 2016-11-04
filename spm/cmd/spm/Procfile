@@ -1,1 +1,4 @@
-etcd: http-server -p 3423
+api: echo 1 && cd $GOPATH/src/github.com/bytegust/api \
+  && godep go run cmd/api/*.go \
+  —oaiBasicAuthPassword test:api:f840241cde3cc560b82c58eb32f453f8 \
+  —couchAddr couchbase://192.168.1.20

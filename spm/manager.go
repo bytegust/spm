@@ -4,12 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"os/exec"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/rogpeppe/rog-go/reverse"
 )
@@ -27,24 +25,22 @@ func NewManager() *Manager {
 
 func (m *Manager) StartAll(jobs []Job) {
 	for _, job := range jobs {
-		m.start(job)
+		m.Start(job)
 	}
 }
 
-func (m *Manager) start(job Job) {
+func (m *Manager) Start(job Job) {
 	_, exists := m.Jobs[job.Name]
 	if exists {
 		log.Println(fmt.Sprintf("wont start job '%s' because already running", job.Name))
 		return
 	}
 
-	// create logs file and assign to Job.LogFile
-	fileName := fmt.Sprintf("/tmp/spm_%s.log", job.Name)
-	logfile, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE|os.O_TRUNC, 700)
+	logging, err := NewLogging(job.Name)
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		job.Logfile = logfile
+		job.Logging = logging
 	}
 
 	c := exec.Command("sh", "-c", job.Command)
@@ -72,22 +68,10 @@ func (m *Manager) start(job Job) {
 		return
 	}
 
-	// generate random logging color
-	job.LogColor = getColor()
-
 	// read command's stdout line by line
 	in := bufio.NewScanner(pr)
 	go func() {
-		for in.Scan() {
-			l := m.LoggerPrefix(job) + in.Text()
-			// write to stdout (console)
-			fmt.Fprintln(os.Stdout, l)
-			//write to job specific logfile
-			if _, err = logfile.WriteString(l + "\n"); err != nil {
-				log.Fatal(err)
-			}
-		}
-		if err := in.Err(); err != nil {
+		if err := job.Logging.Output(in); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -100,22 +84,22 @@ func (m *Manager) start(job Job) {
 	}()
 }
 
-func getColor() int {
-	rand.Seed(int64(time.Now().Nanosecond()))
-	return rand.Intn(250) + 1
-}
-
 func (m *Manager) jobEnded(job Job) {
 	m.mu.Lock()
 	delete(m.Jobs, job.Name)
 	m.mu.Unlock()
-	job.Logfile.Close()
+	job.Logging.Close()
 	log.Println(fmt.Sprintf("job `%s` ended", job.Name))
 	job.NotifyEnd <- true
 }
 
 func (m *Manager) Stop(job string) {
-	j := m.Jobs[job]
+	m.mu.Lock()
+	j, exists := m.Jobs[job]
+	m.mu.Unlock()
+	if !exists {
+		return
+	}
 	pid, _ := syscall.Getpgid(j.Cmd.Process.Pid)
 	syscall.Kill(-pid, syscall.SIGTERM)
 	<-j.NotifyEnd
@@ -145,16 +129,17 @@ func (m *Manager) List() (jobs []string) {
 
 // ReadLog reads last n lines of the file that corresponds to job.
 func (m *Manager) ReadLog(job string, n int) (lines []string) {
-	file := m.Jobs[job].Logfile
+	_, exists := m.Jobs[job]
+	if !exists {
+		lines = append(lines, "job "+job+" is not running")
+		return
+	}
+
+	file := m.Jobs[job].Logging.Logfile
 	scanner := reverse.NewScanner(file)
 	for i := 0; i < n && scanner.Scan(); i++ {
 		lines = append(lines, scanner.Text())
 	}
-	return lines
-}
 
-// LoggerPrefix returns given logger values with unix color code and time as prefix
-func (m *Manager) LoggerPrefix(job Job) string {
-	t := time.Now().Format("15:04:05 PM")
-	return fmt.Sprintf("\033[38;5;%dm%s %s | \033[0m", job.LogColor, t, job.Name)
+	return lines
 }
