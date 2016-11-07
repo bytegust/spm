@@ -1,11 +1,14 @@
-## spm - Simple Process Manager
-spm is somewhere between systemd and foreman.
+### spm - Simple Process Manager
+spm is somewhere between systemd and [foreman](https://github.com/ddollar/foreman).
 
 It runs as a daemon. You can start spm daemon by running `spm` command with no arguments. Once you done that you are ready to start and manage your jobs(processes) with spm commands. spm reads it's jobs from an extended Procfile syntax. You are eligible to start or stop jobs, see running jobs and their logs. Your processes executed as shell commands so you're allowed to use shell syntax in your Procfile. 
 
 Our extended version of Procfile syntax supports comments with `#` sign and multilines with `\`.
 
-### Usage
+## Why spm
+All other foreman like process managers doesn't have a proper stop feature to end running jobs which spm has. spm works in client/server convention, spm daemon listens for job commands(listed at `spm -h`) from it's clients through unix sockets. You are also able to use multiple Procfiles and start/stop multiple jobs in a Procfile which gives a huge flexiblity when you need to work with bunch of long running processes.
+
+## Installation and Usage
 ```
 $ go get github.com/bytegust/spm/cmd/spm
 $ spm -h
