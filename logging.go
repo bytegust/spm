@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/mattn/go-isatty"
 )
 
 type Logging struct {
@@ -68,11 +70,14 @@ func (l *Logging) Close() error {
 // LoggerPrefix wraps given string and time with unix color code, as prefix
 func loggerPrefix(code int, s string) string {
 	t := time.Now().Format("15:04:05 PM")
-	return fmt.Sprintf("\033[38;5;%dm%s %s | \033[0m", code, t, s)
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		return fmt.Sprintf("\033[38;5;%dm%s %s | \033[0m", code, t, s)
+	}
+	return fmt.Sprintf("%s %s | ", t, s)
 }
 
 func genColorCode() (code int) {
 	rand.Seed(int64(time.Now().Nanosecond()))
-	code = rand.Intn(250) + 1
+	code = rand.Intn(231) + 1
 	return
 }
