@@ -1,11 +1,15 @@
 {
-	"ImportPath": "github.com/bytegust/tools/spm",
+	"ImportPath": "github.com/bytegust/spm",
 	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/mattn/go-isatty",
+			"Rev": "66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8"
+		},
 		{
 			"ImportPath": "github.com/rogpeppe/rog-go/reverse",
 			"Rev": "f57ad5e24ab7813942c045f86eda1066eb969e98"
@@ -14,6 +18,10 @@
 			"ImportPath": "github.com/urfave/cli",
 			"Comment": "v1.18.0-84-g3eb41f1",
 			"Rev": "3eb41f1bb122ac7535cc7b32db6b78b541879726"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "b776ec39b3e54652e09028aaaaac9757f4f8211a"
 		}
 	]
 }
