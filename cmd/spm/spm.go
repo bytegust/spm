@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"syscall"
 
-	"github.com/bytegust/tools/spm"
+	"github.com/bytegust/spm"
 	"github.com/urfave/cli"
 )
 
