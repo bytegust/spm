@@ -5,7 +5,7 @@ It runs as a daemon. You can start spm daemon by running `spm` command with no a
 
 Our extended version of Procfile syntax supports comments with `#` sign and multilines with `\`.
 
-## Why spm
+## Why spm ?
 All other foreman like process managers don't have a proper stop feature to end running jobs which spm has. spm works in a client/server convention, spm daemon listens for job commands(listed at `spm -h`) from it's clients through unix sockets. You are also able to use multiple Procfiles and start/stop multiple jobs in a Procfile which gives a huge flexiblity when you need to work with bunch of long running processes. Jobs are recognized by their names, make sure that your jobs has unique names otherwise spm will not start an already running job with same name that you started before.
 
 ## Installation and Usage
